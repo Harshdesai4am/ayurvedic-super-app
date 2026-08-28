@@ -1,97 +1,80 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Ayurvedic Super App 🌿
 
-# Getting Started
+A production-grade, offline-first React Native Super Application built with **TypeScript**, **Redux Toolkit**, and **Clean Architecture**. The app brings together three completely independent health & wellness business modules into a unified mobile application:
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+1. **Consultation**: Discover BAMS/MD Ayurvedic specialists, filter by Dosha (Vata, Pitta, Kapha), reserve date/time slots, and book consultations.
+2. **Shop**: E-commerce catalog for authentic Ayurvedic oils, powders, supplements, teas, and skincare products with local cart management and discount coupon validation.
+3. **Health Records**: Encrypted electronic health records (EHR) timeline for prescriptions, lab tests, and vitals tracking.
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🏛️ System Architecture
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+The application is structured using **Clean Architecture** with a **Feature-First** organization pattern:
 
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```
+src/
+├── app/                  # Bootstrap configuration, theme tokens, store, navigation
+│   ├── constants/        # Route names, storage keys, environment limits
+│   ├── navigation/       # Root stack and bottom tab navigators
+│   ├── store/            # Redux Toolkit store setup
+│   └── theme/            # Centralized light/dark theme palette & typography
+│
+├── core/                 # Shared enterprise infrastructure & framework adapters
+│   ├── api/              # Global Axios HTTP client & response interceptors
+│   ├── errors/           # AppError domain class & React ErrorBoundary
+│   ├── logger/           # Structured logging service
+│   ├── network/          # NetInfo network status monitor hook
+│   ├── offline/          # Persistent mutation queue & Sync Manager
+│   └── storage/          # Rapid storage engine adapter (MMKV fallback)
+│
+├── modules/              # Independent Feature Modules
+│   ├── consultation/     # Doctor catalog, slot grid, booking repository & slice
+│   ├── shop/             # Product catalog, cart management, coupons & slice
+│   ├── healthRecords/    # Encrypted EHR timeline, record creation & slice
+│   └── profile/          # User profile, theme settings, offline queue monitor
+│
+└── shared/               # Atomic Design System
+    └── components/ui/    # Button, Input, Card, Chip, Tag, Skeleton, EmptyState, Toast, SearchBar
 ```
 
-## Step 2: Build and run your app
+---
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## 🔄 Unidirectional Data Flow
 
-### Android
+To ensure high maintainability, UI views are strictly decoupled from API endpoints and local database instances:
 
-```sh
-# Using npm
-npm run android
+`UI View Component` ➔ `Custom Hook` ➔ `Use Case / Repository` ➔ `API Client / Storage` ➔ `Response Mapper` ➔ `Redux State` ➔ `UI Render`
 
-# OR using Yarn
-yarn android
+---
+
+## 📶 Offline-First Engine
+
+- **Persistent Caching**: All domain repositories load data from local MMKV storage first before reaching the network.
+- **Offline Mutation Queue**: Actions performed while offline (consultation bookings, cart modifications, record additions) are enqueued in persistent storage.
+- **Sync Manager**: On network connection, `SyncManager` processes queued mutations sequentially with automatic exponential backoff retry.
+
+---
+
+## ⚡ Performance Optimizations
+
+1. **Virtualized Rendering**: Component lists optimized for high FPS scrolling.
+2. **Component Memoization**: React 19 memoization (`React.memo`, `useMemo`, `useCallback`) applied across custom cards and slot grids.
+3. **Debounced Search**: Search input queries debounced by 300ms to eliminate unnecessary filter re-renders.
+
+---
+
+## 🧪 Testing
+
+Run Jest unit test suite:
+```bash
+npm test
 ```
 
-### iOS
+---
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## 🛠️ Requirements & Setup
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- **Node.js**: >= 22.11.0
+- **React Native**: 0.87.1
+- **React**: 19.2.3
