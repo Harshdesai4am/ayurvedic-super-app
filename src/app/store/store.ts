@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
-import consultationReducer from '../../modules/consultation/store/consultationSlice';
-import shopReducer from '../../modules/shop/store/shopSlice';
-import cartReducer from '../../modules/shop/store/cartSlice';
-import healthRecordsReducer from '../../modules/healthRecords/store/healthRecordsSlice';
+import consultationReducer from '../../features/consultation/store/consultationSlice';
+import shopReducer from '../../features/shop/store/shopSlice';
+import cartReducer from '../../features/shop/store/cartSlice';
+import healthRecordsReducer from '../../features/healthRecords/store/healthRecordsSlice';
+
 
 export const store = configureStore({
   reducer: {

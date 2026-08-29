@@ -2,10 +2,11 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stethoscope, Leaf, ClipboardList, User } from 'lucide-react-native';
-import { DoctorListingScreen } from '../../modules/consultation/screens/DoctorListingScreen';
-import { ProductListingScreen } from '../../modules/shop/screens/ProductListingScreen';
-import { TimelineScreen } from '../../modules/healthRecords/screens/TimelineScreen';
-import { UserProfileScreen } from '../../modules/profile/screens/UserProfileScreen';
+import { DoctorListingScreen } from '../../features/consultation/screens/DoctorListingScreen';
+import { ProductListingScreen } from '../../features/shop/screens/ProductListingScreen';
+import { TimelineScreen } from '../../features/healthRecords/screens/TimelineScreen';
+import { UserProfileScreen } from '../../features/profile/screens/UserProfileScreen';
+
 import { ROUTES } from '../constants/routes';
 import { useTheme } from '../theme/ThemeProvider';
 

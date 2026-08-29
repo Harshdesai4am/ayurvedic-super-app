@@ -1,14 +1,15 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
-import { DoctorDetailsScreen } from '../../modules/consultation/screens/DoctorDetailsScreen';
-import { SlotSelectionScreen } from '../../modules/consultation/screens/SlotSelectionScreen';
-import { BookingSummaryScreen } from '../../modules/consultation/screens/BookingSummaryScreen';
-import { BookingSuccessScreen } from '../../modules/consultation/screens/BookingSuccessScreen';
-import { UpcomingConsultationsScreen } from '../../modules/consultation/screens/UpcomingConsultationsScreen';
-import { CartScreen } from '../../modules/shop/screens/CartScreen';
-import { RecordDetailsScreen } from '../../modules/healthRecords/screens/RecordDetailsScreen';
-import { OfflineQueueScreen } from '../../modules/profile/screens/OfflineQueueScreen';
+import { DoctorDetailsScreen } from '../../features/consultation/screens/DoctorDetailsScreen';
+import { SlotSelectionScreen } from '../../features/consultation/screens/SlotSelectionScreen';
+import { BookingSummaryScreen } from '../../features/consultation/screens/BookingSummaryScreen';
+import { BookingSuccessScreen } from '../../features/consultation/screens/BookingSuccessScreen';
+import { UpcomingConsultationsScreen } from '../../features/consultation/screens/UpcomingConsultationsScreen';
+import { CartScreen } from '../../features/shop/screens/CartScreen';
+import { RecordDetailsScreen } from '../../features/healthRecords/screens/RecordDetailsScreen';
+import { OfflineQueueScreen } from '../../features/profile/screens/OfflineQueueScreen';
+
 import { ROUTES } from '../constants/routes';
 import { useTheme } from '../theme/ThemeProvider';
 

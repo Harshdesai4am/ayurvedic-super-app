@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, ViewStyle } from 'react-native';
+import { Animated, StyleSheet, ViewStyle, View } from 'react-native';
 import { useTheme } from '../../../app/theme/ThemeProvider';
 
 export interface SkeletonProps {
@@ -16,39 +16,56 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   style,
 }) => {
   const { theme } = useTheme();
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.8,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacity]);
+    Animated.loop(
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [animatedValue]);
+
+  // Interpolate translation value for the light sweep overlay
+  const translateX = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-350, 350],
+  });
 
   return (
-    <Animated.View
+    <View
       style={[
+        styles.container,
         {
           width: width as any,
           height,
           backgroundColor: theme.colors.border,
           borderRadius: borderRadius ?? theme.radii.sm,
-          opacity,
         },
         style,
       ]}
-    />
+    >
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFillObject,
+          {
+            backgroundColor: 'rgba(255, 255, 255, 0.45)',
+            transform: [
+              { translateX },
+              { skewX: '-20deg' }
+            ],
+          },
+        ]}
+      />
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+});

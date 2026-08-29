@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
@@ -8,8 +8,13 @@ import { ThemeProvider } from './src/app/theme/ThemeProvider';
 import { ToastProvider } from './src/shared/components/ui/Toast';
 import { ErrorBoundary } from './src/core/errors/ErrorBoundary';
 import { RootNavigator } from './src/app/navigation/RootNavigator';
+import { bootstrapApp } from './src/app/startup';
 
 const App = () => {
+  useEffect(() => {
+    bootstrapApp();
+  }, []);
+
   return (
     <ErrorBoundary>
       <Provider store={store}>
