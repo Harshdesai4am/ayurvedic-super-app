@@ -14,6 +14,8 @@ const mockProduct: Product = {
   inStock: true,
   ingredients: ['Ashwagandha'],
   doshaBenefit: 'Vata',
+  brand: 'Test Brand',
+  stockCount: 10,
 };
 
 describe('Cart Reducer Tests', () => {

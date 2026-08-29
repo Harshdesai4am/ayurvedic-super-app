@@ -107,7 +107,7 @@ class ConsultationRepository {
 
       // 2. Soft Delete items missing from remote API (exclude offline local-created doctors)
       for (const localDoc of localDocs) {
-        if (!remoteDocIds.has(localDoc.id) && !localDoc.id.startsWith('doc_local')) {
+        if (!remoteDocIds.has(localDoc.id) && !localDoc.id.startsWith('doc_local') && !localDoc.id.startsWith('doc_seed_')) {
           await sqlite.executeSql('UPDATE doctors SET isDeleted = 1 WHERE id = ?', [localDoc.id]);
         }
       }
@@ -142,7 +142,7 @@ class ConsultationRepository {
     },
     sortBy?: 'RATING_DESC' | 'PRICE_ASC' | 'EXPERIENCE_DESC' | 'REVIEWS_DESC' | 'ALPHA_ASC'
   ): Doctor[] {
-    let result = doctors;
+    let result = [...doctors];
 
     if (filters) {
       // 1. Specialty
@@ -199,13 +199,13 @@ class ConsultationRepository {
     // Sorting
     if (sortBy) {
       if (sortBy === 'RATING_DESC') {
-        result.sort((a, b) => b.rating - a.rating);
+        result.sort((a, b) => b.rating - a.rating || b.experienceYears - a.experienceYears);
       } else if (sortBy === 'PRICE_ASC') {
-        result.sort((a, b) => a.consultationFee - b.consultationFee);
+        result.sort((a, b) => a.consultationFee - b.consultationFee || b.rating - a.rating);
       } else if (sortBy === 'EXPERIENCE_DESC') {
-        result.sort((a, b) => b.experienceYears - a.experienceYears);
+        result.sort((a, b) => b.experienceYears - a.experienceYears || b.rating - a.rating);
       } else if (sortBy === 'REVIEWS_DESC') {
-        result.sort((a, b) => b.reviewCount - a.reviewCount);
+        result.sort((a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating);
       } else if (sortBy === 'ALPHA_ASC') {
         result.sort((a, b) => a.name.localeCompare(b.name));
       }
@@ -356,7 +356,7 @@ class ConsultationRepository {
     if (!isConnected) {
       OfflineQueue.enqueue('BOOK_CONSULTATION', booking);
     } else {
-      await new Promise((res) => setTimeout(res, 400));
+      await new Promise<void>((res) => setTimeout(res, 400));
     }
 
     return booking;
@@ -368,8 +368,15 @@ class ConsultationRepository {
     if (!isConnected) {
       OfflineQueue.enqueue('CANCEL_CONSULTATION', { id: bookingId });
     } else {
-      await new Promise((res) => setTimeout(res, 300));
+      await new Promise<void>((res) => setTimeout(res, 300));
     }
+  }
+
+  public async getSpecialties(): Promise<string[]> {
+    const res = await sqlite.executeSql(
+      'SELECT DISTINCT specialty FROM doctors WHERE isDeleted = 0 AND specialty IS NOT NULL AND specialty != ""'
+    );
+    return res.rows._array.map((row) => row.specialty);
   }
 }
 

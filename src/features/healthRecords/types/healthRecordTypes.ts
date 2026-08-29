@@ -24,4 +24,6 @@ export interface HealthRecord {
   };
   tags?: string[];
   createdAt: number;
+  updatedAt?: number;
+  isDeleted?: number;
 }

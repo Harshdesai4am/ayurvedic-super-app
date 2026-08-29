@@ -43,3 +43,23 @@ export const selectConsultationError = createSelector(
   (state) => state.error
 );
 
+export const selectSpecialties = createSelector(
+  [selectConsultationState],
+  (state) => state.specialties
+);
+
+export const selectHasMoreDoctors = createSelector(
+  [selectConsultationState],
+  (state) => state.hasMore
+);
+
+export const selectDoctorsPage = createSelector(
+  [selectConsultationState],
+  (state) => state.page
+);
+
+export const selectConsultationTotalCount = createSelector(
+  [selectConsultationState],
+  (state) => state.totalCount
+);
+

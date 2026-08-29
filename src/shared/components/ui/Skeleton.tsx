@@ -49,7 +49,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     >
       <Animated.View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           {
             backgroundColor: 'rgba(255, 255, 255, 0.45)',
             transform: [

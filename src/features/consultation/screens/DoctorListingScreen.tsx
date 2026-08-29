@@ -1,19 +1,22 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, FlatList, Text, useWindowDimensions, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { View, StyleSheet, FlatList, Text, useWindowDimensions, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SlidersHorizontal, Check } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '../../../app/store/store';
-import { fetchDoctors, setActiveSpecialty, setSelectedDoctor } from '../store/consultationSlice';
+import { fetchDoctors, setActiveSpecialty, setSelectedDoctor, fetchSpecialties } from '../store/consultationSlice';
 import {
   selectDoctors,
   selectActiveSpecialty,
-  selectIsConsultationLoading
+  selectIsConsultationLoading,
+  selectSpecialties,
+  selectHasMoreDoctors,
+  selectDoctorsPage,
+  selectConsultationTotalCount
 } from '../selectors/consultationSelectors';
 import { DoctorCard } from '../components/DoctorCard';
 import { useTheme } from '../../../app/theme/ThemeProvider';
 import { SearchBar } from '../../../shared/components/ui/SearchBar';
 import { Chip } from '../../../shared/components/ui/Chip';
-import { Skeleton } from '../../../shared/components/ui/Skeleton';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
 import { BottomSheet } from '../../../shared/components/ui/BottomSheet';
 import { Button } from '../../../shared/components/ui/Button';
@@ -21,7 +24,25 @@ import { ROUTES } from '../../../app/constants/routes';
 import { Doctor } from '../types/consultationTypes';
 import ShimmerPlaceholder from 'react-native-shimmer-placeholder';
 
-const SPECIALTIES = ['All', 'Vata', 'Pitta', 'Kapha', 'General Ayurveda', 'Panchakarma'];
+const DoctorListItem = React.memo(({ 
+  item, 
+  onSelect, 
+  onBook 
+}: { 
+  item: Doctor; 
+  onSelect: (doctor: Doctor) => void; 
+  onBook: (doctor: Doctor) => void; 
+}) => {
+  const handlePress = useCallback(() => onSelect(item), [item, onSelect]);
+  const handleBookPress = useCallback(() => onBook(item), [item, onBook]);
+  return (
+    <DoctorCard
+      doctor={item}
+      onPress={handlePress}
+      onBookPress={handleBookPress}
+    />
+  );
+});
 
 export const DoctorListingScreen = ({ navigation }: any) => {
   const { theme } = useTheme();
@@ -33,11 +54,20 @@ export const DoctorListingScreen = ({ navigation }: any) => {
   const allDoctors = useAppSelector(selectDoctors);
   const activeSpecialty = useAppSelector(selectActiveSpecialty);
   const isLoading = useAppSelector(selectIsConsultationLoading);
+  const dbSpecialties = useAppSelector(selectSpecialties);
+  const hasMore = useAppSelector(selectHasMoreDoctors);
+  const page = useAppSelector(selectDoctorsPage);
+  const totalCount = useAppSelector(selectConsultationTotalCount);
+  const [hasLoadedDoctors, setHasLoadedDoctors] = useState(false);
+  const listRef = useRef<FlatList>(null);
+
+  const specialtiesList = useMemo(() => {
+    return ['All', ...new Set(dbSpecialties.filter((specialty) => specialty !== 'All'))];
+  }, [dbSpecialties]);
 
   // Search & Filter State
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [page, setPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
 
@@ -53,6 +83,20 @@ export const DoctorListingScreen = ({ navigation }: any) => {
 
   // Sort State
   const [sortBy, setSortBy] = useState<'RATING_DESC' | 'PRICE_ASC' | 'EXPERIENCE_DESC' | 'REVIEWS_DESC' | 'ALPHA_ASC'>('RATING_DESC');
+
+  const isFilterActive = useMemo(() => {
+    return (
+      gender !== 'All' ||
+      minExperience !== 0 ||
+      minRating !== 0 ||
+      maxFee !== 0 ||
+      language !== '' ||
+      verifiedOnly !== false ||
+      availableToday !== false ||
+      onlineOnly !== false ||
+      sortBy !== 'RATING_DESC'
+    );
+  }, [gender, minExperience, minRating, maxFee, language, verifiedOnly, availableToday, onlineOnly, sortBy]);
 
   // Temporary local states for filter bottom sheet
   const [tempGender, setTempGender] = useState<'All' | 'Male' | 'Female'>('All');
@@ -93,17 +137,31 @@ export const DoctorListingScreen = ({ navigation }: any) => {
 
   const isTablet = width >= 768;
 
+  // Load specialties from database on mount
+  useEffect(() => {
+    dispatch(fetchSpecialties());
+  }, [dispatch]);
+
+  // Reset list scroll position back to top (offset 0) when page resets to 1 (new filters/search)
+  useEffect(() => {
+    if (page === 1 && allDoctors.length > 0) {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [allDoctors, page]);
+
   // Debounced search logic
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1);
     }, 300);
     return () => clearTimeout(handler);
   }, [search]);
 
   // Fetch doctors (combines specialty filter, debounced search, sorting, and active filters)
   useEffect(() => {
+    let isMounted = true;
+    setHasLoadedDoctors(false);
+
     dispatch(
       fetchDoctors({
         filters: {
@@ -120,7 +178,15 @@ export const DoctorListingScreen = ({ navigation }: any) => {
         },
         sortBy,
       })
-    );
+    ).finally(() => {
+      if (isMounted) {
+        setHasLoadedDoctors(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [
     dispatch,
     activeSpecialty,
@@ -138,25 +204,67 @@ export const DoctorListingScreen = ({ navigation }: any) => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    setPage(1);
     await dispatch(
       fetchDoctors({
         filters: {
           specialty: activeSpecialty,
           gender,
-          minExperience,
-          minRating,
-          maxFee,
-          language,
+          minExperience: minExperience || undefined,
+          minRating: minRating || undefined,
+          maxFee: maxFee || undefined,
+          language: language || undefined,
           verifiedOnly,
           availableToday,
           onlineOnly,
           searchQuery: debouncedSearch,
         },
         sortBy,
+        page: 1,
+        refreshing: true,
       })
     );
     setRefreshing(false);
+  };
+
+  const handleLoadMore = () => {
+    if (hasMore && !isLoading) {
+      dispatch(
+        fetchDoctors({
+          filters: {
+            specialty: activeSpecialty,
+            gender,
+            minExperience: minExperience || undefined,
+            minRating: minRating || undefined,
+            maxFee: maxFee || undefined,
+            language: language || undefined,
+            verifiedOnly,
+            availableToday,
+            onlineOnly,
+            searchQuery: debouncedSearch,
+          },
+          sortBy,
+          page: page + 1,
+        })
+      );
+    }
+  };
+
+  const renderFooter = () => {
+    if (!hasMore) {
+      if (allDoctors.length > 0) {
+        return (
+          <Text style={[styles.endText, { color: theme.colors.textMuted }]}>
+            All doctors loaded.
+          </Text>
+        );
+      }
+      return null;
+    }
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={theme.colors.brand[500]} />
+      </View>
+    );
   };
 
   const handleResetFilters = () => {
@@ -180,6 +288,7 @@ export const DoctorListingScreen = ({ navigation }: any) => {
     setOnlineOnly(false);
     setSortBy('RATING_DESC');
     setSearch('');
+    setDebouncedSearch('');
     dispatch(setActiveSpecialty('All'));
     setIsFilterSheetVisible(false);
   };
@@ -193,14 +302,6 @@ export const DoctorListingScreen = ({ navigation }: any) => {
     dispatch(setSelectedDoctor(doctor));
     navigation.navigate(ROUTES.CONSULTATION.SLOT_SELECTION);
   }, [dispatch, navigation]);
-
-  const MemoizedDoctorCard = React.memo(({ item }: { item: Doctor }) => (
-    <DoctorCard
-      doctor={item}
-      onPress={() => handleSelectDoctor(item)}
-      onBookPress={() => handleBookSlot(item)}
-    />
-  ));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -229,12 +330,15 @@ export const DoctorListingScreen = ({ navigation }: any) => {
               onPress={openFilterSheet}
             >
               <SlidersHorizontal size={18} color={theme.colors.textPrimary} />
+              {isFilterActive && (
+                <View style={[styles.filterDot, { backgroundColor: theme.colors.status.error }]} />
+              )}
             </TouchableOpacity>
           </View>
 
           <FlatList
             horizontal
-            data={SPECIALTIES}
+            data={specialtiesList}
             keyExtractor={(item) => item}
             showsHorizontalScrollIndicator={false}
             style={styles.chipList}
@@ -243,21 +347,20 @@ export const DoctorListingScreen = ({ navigation }: any) => {
                 label={item}
                 isSelected={activeSpecialty === item}
                 onPress={() => {
-                  setPage(1);
                   dispatch(setActiveSpecialty(item));
                 }}
               />
             )}
           />
 
-          {allDoctors.length > 0 && (
+          {totalCount > 0 && (
             <Text style={[styles.countText, { color: theme.colors.textMuted }]}>
-              {allDoctors.length} {allDoctors.length === 1 ? 'doctor' : 'doctors'} available
+              {totalCount} {totalCount === 1 ? 'doctor' : 'doctors'} available
             </Text>
           )}
         </View>
 
-        {isLoading && allDoctors.length === 0 ? (
+        {!hasLoadedDoctors || (isLoading && allDoctors.length === 0) ? (
           <View style={styles.skeletonContainer}>
             {Array.from({ length: 3 }).map((_, index) => (
               <View key={index} style={[styles.shimmerCard, { borderColor: theme.colors.border, backgroundColor: theme.colors.card }]}>
@@ -292,16 +395,26 @@ export const DoctorListingScreen = ({ navigation }: any) => {
           />
         ) : (
           <FlatList
+            ref={listRef}
             data={allDoctors}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             onRefresh={handleRefresh}
             refreshing={refreshing}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
             initialNumToRender={10}
             maxToRenderPerBatch={10}
             windowSize={5}
+            ListFooterComponent={renderFooter}
+            renderItem={({ item }) => (
+              <DoctorListItem
+                item={item}
+                onSelect={handleSelectDoctor}
+                onBook={handleBookSlot}
+              />
+            )}
             removeClippedSubviews={true}
-            renderItem={({ item }) => <MemoizedDoctorCard item={item} />}
           />
         )}
 
@@ -484,6 +597,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filterDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   chipList: {
     marginVertical: 4,
   },
@@ -623,5 +744,15 @@ const styles = StyleSheet.create({
     width: 80,
     height: 32,
     borderRadius: 16,
+  },
+  footerLoader: {
+    marginVertical: 16,
+    alignItems: 'center',
+  },
+  endText: {
+    textAlign: 'center',
+    fontSize: 12,
+    marginVertical: 16,
+    fontWeight: '500',
   },
 });

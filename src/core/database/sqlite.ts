@@ -24,6 +24,7 @@ class SQLiteDatabaseSimulator {
   private cache: Record<string, any[]> = {};
   private dirtyTables: Set<string> = new Set();
   private pendingCount = 0;
+  private inTransaction = false;
 
   private getTableData(tableName: string): any[] {
     if (!this.cache[tableName]) {
@@ -40,7 +41,7 @@ class SQLiteDatabaseSimulator {
   }
 
   private persistIfNeeded(): void {
-    if (this.pendingCount === 0) {
+    if (this.pendingCount === 0 && !this.inTransaction) {
       this.dirtyTables.forEach((tableName) => {
         Storage.setObject(`sqlite_table_${tableName}`, this.cache[tableName]);
       });
@@ -160,25 +161,75 @@ class SQLiteDatabaseSimulator {
         const tableName = updateMatch[1];
         const data = this.getTableData(tableName);
 
-        const setClauses = cleanSql.match(/SET\s+([^WHERE]+)/i);
-        const whereMatch = cleanSql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
+        const setMatch = cleanSql.match(/SET\s+(.+?)(?:\s+WHERE\s+|$)/i);
+        const whereMatch = cleanSql.match(/WHERE\s+(.+)$/i);
+
+        if (!setMatch) throw new Error('Could not parse UPDATE SET clause');
+
+        // Parse SET clauses
+        const setParts = setMatch[1].split(',');
+        const updates: { col: string; val: any; isPlaceholder: boolean }[] = [];
+        let paramIdx = 0;
+
+        setParts.forEach((part) => {
+          const eqIdx = part.indexOf('=');
+          if (eqIdx === -1) return;
+          const col = part.substring(0, eqIdx).trim();
+          const valExpr = part.substring(eqIdx + 1).trim();
+
+          if (valExpr === '?') {
+            updates.push({ col, val: params[paramIdx++], isPlaceholder: true });
+          } else {
+            // Parse literal value
+            let val: any = valExpr;
+            if (valExpr.startsWith("'") && valExpr.endsWith("'")) {
+              val = valExpr.slice(1, -1);
+            } else if (!isNaN(Number(valExpr))) {
+              val = Number(valExpr);
+            } else if (valExpr.toUpperCase() === 'NULL') {
+              val = null;
+            }
+            updates.push({ col, val, isPlaceholder: false });
+          }
+        });
+
+        // Parse WHERE clause
+        let whereCol = '';
+        let whereVal: any = null;
+        if (whereMatch) {
+          const whereParts = whereMatch[1].split('=');
+          if (whereParts.length === 2) {
+            whereCol = whereParts[0].trim();
+            const whereExpr = whereParts[1].trim();
+            if (whereExpr === '?') {
+              whereVal = params[paramIdx++];
+            } else {
+              if (whereExpr.startsWith("'") && whereExpr.endsWith("'")) {
+                whereVal = whereExpr.slice(1, -1);
+              } else if (!isNaN(Number(whereExpr))) {
+                whereVal = Number(whereExpr);
+              } else if (whereExpr.toUpperCase() === 'NULL') {
+                whereVal = null;
+              }
+            }
+          }
+        }
 
         let rowsAffected = 0;
-        if (setClauses && whereMatch && params.length >= 2) {
-          const setParts = setClauses[1].split(',').map((p) => p.trim());
-          const whereCol = whereMatch[1];
-          const setValue = params[0];
-          const whereValue = params[1];
+        data.forEach((item) => {
+          let matches = true;
+          if (whereCol) {
+            matches = String(item[whereCol]) === String(whereVal);
+          }
+          if (matches) {
+            updates.forEach(({ col, val }) => {
+              item[col] = val;
+            });
+            rowsAffected++;
+          }
+        });
 
-          const setCol = setParts[0].split('=')[0].trim();
-
-          data.forEach((item) => {
-            if (String(item[whereCol]) === String(whereValue)) {
-              item[setCol] = setValue;
-              rowsAffected++;
-            }
-          });
-
+        if (rowsAffected > 0) {
           this.saveTableData(tableName, data);
         }
 
@@ -214,16 +265,19 @@ class SQLiteDatabaseSimulator {
       throw error;
     } finally {
       this.pendingCount--;
-      this.persistIfNeeded();
+        this.persistIfNeeded();
     }
   }
 
   public async transaction(callback: (tx: SQLiteTransaction) => void): Promise<void> {
+    this.inTransaction = true;
+    const promises: Promise<any>[] = [];
     const tx: SQLiteTransaction = {
       executeSql: (sql, args = [], successCb, errorCb) => {
-        this.executeSql(sql, args)
+        const promise = this.executeSql(sql, args)
           .then((res) => {
             if (successCb) successCb(tx, res);
+            return res;
           })
           .catch((err) => {
             if (errorCb) {
@@ -231,15 +285,21 @@ class SQLiteDatabaseSimulator {
             } else {
               Logger.error('[SQLite Transaction] Error during execution', err);
             }
+            throw err;
           });
+        promises.push(promise);
       },
     };
 
     try {
       callback(tx);
+      await Promise.all(promises);
     } catch (e) {
       Logger.error('[SQLite Transaction] Error inside transaction block', e);
       throw e;
+    } finally {
+      this.inTransaction = false;
+      this.persistIfNeeded();
     }
   }
 }

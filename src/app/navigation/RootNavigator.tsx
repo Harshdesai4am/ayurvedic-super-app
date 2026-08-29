@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
+import { SplashScreen } from '../../features/splash/screens/SplashScreen';
 import { DoctorDetailsScreen } from '../../features/consultation/screens/DoctorDetailsScreen';
 import { SlotSelectionScreen } from '../../features/consultation/screens/SlotSelectionScreen';
 import { BookingSummaryScreen } from '../../features/consultation/screens/BookingSummaryScreen';
@@ -30,6 +31,11 @@ export const RootNavigator = () => {
         },
       }}
     >
+      <Stack.Screen
+        name={ROUTES.SPLASH}
+        component={SplashScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name={ROUTES.MAIN_TABS}
         component={TabNavigator}

@@ -5,7 +5,7 @@ export class HealthRecordsApi {
   public static async fetchRemoteRecords(): Promise<HealthRecord[]> {
     Logger.info('[API] Syncing health records timeline from remote EHR server...');
     // Simulate API delay
-    await new Promise((res) => setTimeout(res, 600));
+    await new Promise<void>((res) => setTimeout(res, 600));
 
     // Return mock records simulating a server database state
     return [
@@ -44,7 +44,7 @@ export class HealthRecordsApi {
 
   public static async uploadRecord(record: HealthRecord): Promise<boolean> {
     Logger.info(`[API] Uploading health record: ${record.title} to remote secure cloud...`);
-    await new Promise((res) => setTimeout(res, 500));
+    await new Promise<void>((res) => setTimeout(res, 500));
     return true;
   }
 }

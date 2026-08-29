@@ -67,7 +67,7 @@ export const CartScreen = ({ navigation }: any) => {
   const handleCheckout = () => {
     showToast('Order Placed Successfully! (Offline Sync Enabled)', 'success');
     dispatch(clearCartThunk());
-    navigation.navigate(ROUTES.SHOP.PRODUCT_LISTING);
+    navigation.navigate(ROUTES.MAIN_TABS, { screen: ROUTES.SHOP.ROOT });
   };
 
   const handleCopyCoupon = (code: string) => {
@@ -97,7 +97,7 @@ export const CartScreen = ({ navigation }: any) => {
             title="Your Cart is Empty"
             description="Explore our herbal formulations, oils, and remedies."
             actionTitle="Shop Now"
-            onAction={() => navigation.navigate(ROUTES.SHOP.PRODUCT_LISTING)}
+            onAction={() => navigation.navigate(ROUTES.MAIN_TABS, { screen: ROUTES.SHOP.ROOT })}
           />
         ) : (
           <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 100 + insets.bottom }]}>

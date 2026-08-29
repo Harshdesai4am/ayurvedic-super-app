@@ -29,8 +29,7 @@ export class ShopApi {
       const mappedProducts: Product[] = response.data.map((item: any, index: number) => {
         const id = `prod_api_${item.id}`;
         
-        // Convert category
-        let category = categories[index % categories.length];
+        let category = categories[index % categories.length] as Product['category'];
         if (item.category === 'electronics') category = 'Supplements';
         else if (item.category === 'jewelery') category = 'Skincare';
         else if (item.category.includes('clothing')) category = index % 2 === 0 ? 'Oils' : 'Churna';

@@ -48,13 +48,20 @@ export const registerSyncHandlers = () => {
   });
 };
 
-export const bootstrapApp = async () => {
+export const bootstrapApp = async (onProgress?: (status: string, percentage: number) => void) => {
   try {
+    onProgress?.('Initializing database...', 10);
     await initDb();
 
+    // Auto-restore any previously soft-deleted seeded records from sync bugs
+    await sqlite.executeSql("UPDATE doctors SET isDeleted = 0 WHERE id LIKE 'doc_seed_%'");
+    await sqlite.executeSql("UPDATE products SET isDeleted = 0 WHERE id LIKE 'prod_seed_%'");
+
     // 1. Seed 2,000 Doctors in a fast transaction
+    onProgress?.('Checking doctor records...', 30);
     const docs = await sqlite.executeSql('SELECT id FROM doctors LIMIT 1');
     if (docs.rows.length === 0) {
+      onProgress?.('Seeding 2,000 doctors...', 50);
       Logger.info('[Startup] Seeding 2000 initial doctors into SQLite...');
       const specialties = ['Vata', 'Pitta', 'Kapha', 'General Ayurveda', 'Panchakarma'];
       const qualifications = [
@@ -119,8 +126,10 @@ export const bootstrapApp = async () => {
     }
 
     // 2. Seed 2,000 Products in a fast transaction
+    onProgress?.('Checking product catalog...', 70);
     const prods = await sqlite.executeSql('SELECT id FROM products LIMIT 1');
     if (prods.rows.length === 0) {
+      onProgress?.('Seeding 2,000 products...', 85);
       Logger.info('[Startup] Seeding 2000 initial products into SQLite...');
       const categories = ['Oils', 'Churna', 'Supplements', 'Teas', 'Skincare'];
       const brands = ['Himalaya Wellness', 'Kottakkal Arya Vaidya Sala', 'Organic India', 'Dabur', 'Baidyanath'];
@@ -177,10 +186,14 @@ export const bootstrapApp = async () => {
       Logger.info('[Startup] Seeded 2000 products successfully.');
     }
 
+    onProgress?.('Starting background services...', 95);
     registerSyncHandlers();
     SyncManager.processQueue();
+    
+    onProgress?.('App ready!', 100);
     Logger.info('[Startup] Bootstrapping complete.');
   } catch (error) {
     Logger.error('[Startup] Bootstrapping failed:', error);
+    onProgress?.('Initialization failed!', 100);
   }
 };

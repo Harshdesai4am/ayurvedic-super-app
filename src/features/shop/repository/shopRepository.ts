@@ -106,7 +106,7 @@ class ShopRepository {
 
       // 2. Soft Delete items missing from remote API
       for (const localProd of localProds) {
-        if (!remoteProdIds.has(localProd.id) && !localProd.id.startsWith('prod_local')) {
+        if (!remoteProdIds.has(localProd.id) && !localProd.id.startsWith('prod_local') && !localProd.id.startsWith('prod_seed_')) {
           await sqlite.executeSql('UPDATE products SET isDeleted = 1 WHERE id = ?', [localProd.id]);
         }
       }
@@ -137,7 +137,7 @@ class ShopRepository {
     },
     sortBy?: 'ALPHA_ASC' | 'RATING_DESC' | 'PRICE_ASC' | 'PRICE_DESC' | 'RECENT_DESC'
   ): Product[] {
-    let result = products;
+    let result = [...products];
 
     if (filters) {
       // 1. Category

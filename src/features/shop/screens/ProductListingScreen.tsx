@@ -38,6 +38,33 @@ import ShimmerPlaceholder from 'react-native-shimmer-placeholder';
 const SHOP_CATEGORIES = ['All', 'Oils', 'Churna', 'Supplements', 'Teas', 'Skincare'];
 const BRANDS = ['All', 'Himalaya Wellness', 'Kottakkal Arya Vaidya Sala', 'Organic India', 'Dabur', 'Baidyanath'];
 
+const ProductListItem = React.memo(({
+  item,
+  isWishlisted,
+  numColumns,
+  onAddToCart,
+  onToggleWishlist,
+}: {
+  item: Product;
+  isWishlisted: boolean;
+  numColumns: number;
+  onAddToCart: (product: Product) => void;
+  onToggleWishlist: (productId: string) => void;
+}) => {
+  const handleAddToCart = useCallback(() => onAddToCart(item), [item, onAddToCart]);
+  const handleToggleWishlist = useCallback(() => onToggleWishlist(item.id), [item, onToggleWishlist]);
+  return (
+    <ProductCard
+      product={item}
+      isWishlisted={isWishlisted}
+      numColumns={numColumns}
+      onPress={() => {}}
+      onAddToCart={handleAddToCart}
+      onToggleWishlist={handleToggleWishlist}
+    />
+  );
+});
+
 export const ProductListingScreen = ({ navigation }: any) => {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
@@ -67,6 +94,17 @@ export const ProductListingScreen = ({ navigation }: any) => {
   const [maxPrice, setMaxPrice] = useState<number>(0);
   const [minRating, setMinRating] = useState<number>(0);
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+
+  const isFilterActive = useMemo(() => {
+    return (
+      brand !== 'All' ||
+      minPrice !== 0 ||
+      maxPrice !== 0 ||
+      minRating !== 0 ||
+      inStockOnly !== false ||
+      sortBy !== undefined
+    );
+  }, [brand, minPrice, maxPrice, minRating, inStockOnly, sortBy]);
 
   // Temporary local states for filter bottom sheet
   const [tempBrand, setTempBrand] = useState('All');
@@ -215,17 +253,6 @@ export const ProductListingScreen = ({ navigation }: any) => {
     );
   };
 
-  const MemoizedProductCard = React.memo(({ item }: { item: Product }) => (
-    <ProductCard
-      product={item}
-      isWishlisted={wishlistIds.includes(item.id)}
-      numColumns={numColumns}
-      onPress={() => {}}
-      onAddToCart={() => handleAddToCart(item)}
-      onToggleWishlist={() => handleToggleWishlist(item.id)}
-    />
-  ));
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View
@@ -269,6 +296,9 @@ export const ProductListingScreen = ({ navigation }: any) => {
               onPress={openFilterSheet}
             >
               <SlidersHorizontal size={18} color={theme.colors.textPrimary} />
+              {isFilterActive && (
+                <View style={[styles.filterDot, { backgroundColor: theme.colors.status.error }]} />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -329,7 +359,15 @@ export const ProductListingScreen = ({ navigation }: any) => {
             windowSize={5}
             removeClippedSubviews={true}
             ListFooterComponent={renderFooter}
-            renderItem={({ item }) => <MemoizedProductCard item={item} />}
+            renderItem={({ item }) => (
+              <ProductListItem
+                item={item}
+                isWishlisted={wishlistIds.includes(item.id)}
+                numColumns={numColumns}
+                onAddToCart={handleAddToCart}
+                onToggleWishlist={handleToggleWishlist}
+              />
+            )}
           />
         )}
 
@@ -524,6 +562,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  filterDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   chipList: {
     marginVertical: 4,
